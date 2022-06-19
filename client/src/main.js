@@ -93,6 +93,7 @@ class CrappyMMOAttempt {
         grid: this.grid_,
     }));
     this.entityManager_.Add(scenery, 'scenery');
+    console.log('Added scenery controller')
 
     const spawner = new entity.Entity();
     spawner.AddComponent(new spawners.PlayerSpawner({
@@ -133,7 +134,7 @@ class CrappyMMOAttempt {
     this.entityManager_.Add(levelUpSpawner, 'level-up-spawner');
   }
 
-  _OnWindowResize() {
+  _OnWindowResize() { 
     this.camera_.aspect = window.innerWidth / window.innerHeight;
     this.camera_.updateProjectionMatrix();
     this.threejs_.setSize(window.innerWidth, window.innerHeight);
