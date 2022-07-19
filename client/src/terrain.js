@@ -102,6 +102,9 @@ export const terrain = (function() {
     }
 
     _InitBiomes(params) {
+
+      // this happens
+      
       params.guiParams.biomes = {
         octaves: 2,
         persistence: 0.5,

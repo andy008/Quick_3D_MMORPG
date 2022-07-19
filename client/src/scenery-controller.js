@@ -19,7 +19,7 @@ export const scenery_controller = (() => {
         Leaves: 'Birch_Leaves_Yellow.png'
       },
       scale: 0.075,
-      biomes: ['forest'],
+      biomes: ['forest','arid', 'desert'],
       collision: true,
     },
     tree1: {
@@ -30,21 +30,21 @@ export const scenery_controller = (() => {
         Leaves: 'Leaves_Blue.png'
       },
       scale: 0.1,
-      biomes: ['forest'],
+      biomes: ['forest','arid'],
       collision: true,
     },
     rock1: {
       base: 'Rock_1.fbx',
       resourcePath: './resources/nature/FBX/',
       names: {},
-      scale: 0.025,
+      scale: 0.25,
       biomes: ['arid', 'desert'],
     },
     rockMoss1: {
       base: 'Rock_Moss_1.fbx',
       resourcePath: './resources/nature/FBX/',
       names: {},
-      scale: 0.025,
+      scale: 0.25,
       biomes: ['forest'],
     },
     plant1: {
@@ -70,10 +70,34 @@ export const scenery_controller = (() => {
     },
   };
 
+  const _SCENERYSMALL = {
+    plant1: {
+      base: 'Plant_1.fbx',
+      resourcePath: './resources/nature/FBX/',
+      names: {},
+      scale: 0.05,
+      biomes: ['forest', 'arid'],
+    },
+    grass1: {
+      base: 'Grass_1.fbx',
+      resourcePath: './resources/nature/FBX/',
+      names: {},
+      scale: 0.05,
+      biomes: ['forest', 'arid'],
+    },
+    flowers1: {
+      base: 'Flowers.fbx',
+      resourcePath: './resources/nature/FBX/',
+      names: {},
+      scale: 0.05,
+      biomes: ['forest'],
+    },
+  };  
+
   const _BIOMES = {
-    desert: 0.1,
-    forest: 0.8,
-    arid: 0.6,
+    desert: 0.2,
+    forest: 1.0,
+    arid: 0.8,
   };
 
   const multiples = {
@@ -81,14 +105,24 @@ export const scenery_controller = (() => {
     tree1: {name: 'Tree_', key: 'tree', num: 10},
     rock1: {name: 'Rock_', key: 'rock', num: 7},
     rockMoss1: {name: 'Rock_Moss_', key: 'rockMoss', num: 7},
+  };
+
+  const multiplesSmall = {
     plant1: {name: 'Plant_', key: 'plant', num: 5},
     grass1: {name: 'Grass_', key: 'grass',  num: 2},
-  };
+  };  
 
   for (let k in multiples) {
     for (let i = 2; i < multiples[k].num; ++i) {
       _SCENERY[multiples[k].key + i] = {..._SCENERY[k]};
       _SCENERY[multiples[k].key + i].base = multiples[k].name + i + '.fbx';
+    }
+  }
+
+  for (let k in multiplesSmall) {
+    for (let i = 2; i < multiplesSmall[k].num; ++i) {
+      _SCENERYSMALL[multiplesSmall[k].key + i] = {..._SCENERYSMALL[k]};
+      _SCENERYSMALL[multiplesSmall[k].key + i].base = multiplesSmall[k].name + i + '.fbx';
     }
   }
 
@@ -98,7 +132,7 @@ export const scenery_controller = (() => {
       this.params_ = params;
 
       const noiseParams = {
-        octaves: 1,
+        octaves: 1.0,
         persistence: 0.5,
         lacunarity: 2.0,
         exponentiation: 1.0,
@@ -110,7 +144,7 @@ export const scenery_controller = (() => {
       this.noise_ = new noise.Noise(noiseParams);
 
       this.center_ = null;
-      this.crap_ = [];
+      this.vegetation_ = [];
     }
 
     InitEntity() {
@@ -199,15 +233,65 @@ export const scenery_controller = (() => {
           new spatial_grid_controller.SpatialGridController(
               {grid: this.params_.grid}));
       }
-
       const q = new THREE.Quaternion().setFromAxisAngle(
           new THREE.Vector3(0, 1, 0), this.noise_.Get(spawnPos.x, 5.0, spawnPos.z) * 360);
       e.SetQuaternion(q);
 
-      return e;
+      return e;      
     }
 
-    SpawnCrap_() {
+    SpawnSmallAt_(biome, spawnPos) {
+
+      const matchingScenery = [];
+      for (let k in _SCENERYSMALL) {
+        if (_SCENERYSMALL[k].biomes.indexOf(biome) >= 0) {
+          matchingScenery.push(k);
+        }
+      }
+
+      const roll = this.noise_.Get(spawnPos.x, 3.0, spawnPos.z);
+      const randomProp = _SCENERYSMALL[matchingScenery[Math.round(roll * (matchingScenery.length - 1))]];
+
+      if(matchingScenery.length > 0) {
+
+        const e = new entity.Entity();
+        e.AddComponent(new render_component.RenderComponent({
+          scene: this.params_.scene,
+          resourcePath: randomProp.resourcePath,
+          resourceName: randomProp.base,
+          textures: {
+            resourcePath: './resources/trees/Textures/',
+            names: randomProp.names,
+            wrap: true,
+          },
+          emissive: new THREE.Color(0x000000),
+          specular: new THREE.Color(0x000000),
+          scale: randomProp.scale * (0.8 + this.noise_.Get(spawnPos.x, 4.0, spawnPos.z) * 0.4),
+          castShadow: true,
+          receiveShadow: true,
+          onMaterial: (m) => {
+            if (m.name.search('Leaves') >= 0) {
+              m.alphaTest = 0.5;
+            }
+          }
+        }));
+        if (randomProp.collision) {
+          e.AddComponent(
+            new spatial_grid_controller.SpatialGridController(
+                {grid: this.params_.grid}));
+        }
+
+        const q = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0), this.noise_.Get(spawnPos.x, 5.0, spawnPos.z) * 360);
+        e.SetQuaternion(q);
+        return e;
+      }
+      return null;
+
+
+    }      
+
+    SpawnVegetation_() {
       const player = this.FindEntity('player');
       if (!player) {
         return;
@@ -229,8 +313,8 @@ export const scenery_controller = (() => {
       const _V = new THREE.Vector3();
       const terrain = this.FindEntity('terrain').GetComponent('TerrainChunkManager');
 
-      for (let x = -10; x <= 10; ++x) {
-        for (let y = -10; y <= 10; ++y) {
+      for (let x = -7; x <= 7; ++x) {
+        for (let y = -7; y <= 7; ++y) {
           _P.set(x, 0.0, y);
           _P.add(center);
           _P.multiplyScalar(50.0);
@@ -260,13 +344,52 @@ export const scenery_controller = (() => {
           this.Manager.Add(e, key);
 
           e.SetActive(false);
-          this.crap_.push(e);
+          this.vegetation_.push(e);
         }
       }
+
+      // lots of small stuff
+      for (let x = -4; x <= 4; x +=0.3) {
+        for (let y = -4; y <= 4; y +=0.3) {
+          _P.set(x, 0.0, y);
+          _P.add(center);
+          _P.multiplyScalar(50.0);
+
+          const key = '__scenery__[' + _P.x + '][' + _P.z + ']';
+          if (this.FindEntity(key)) {
+            continue;
+          }
+
+          _V.copy(_P);
+          
+          _P.x += (this.noise_.Get(_P.x, 0.0, _P.z) * 2.0 - 1.0) * 25.0;
+          _P.z += (this.noise_.Get(_P.x, 1.0, _P.z) * 2.0 - 1.0) * 25.0;
+          _P.y = terrain.GetHeight(_P)[0];
+
+          const biome = this.FindBiome_(terrain, _P);
+
+          const roll = this.noise_.Get(_V.x, 2.0, _V.z);
+          if (roll > _BIOMES[biome]) {
+            continue;
+          }
+
+          const e = this.SpawnSmallAt_(biome, _P);
+          if(e == null) {
+            continue;
+          }
+
+          e.SetPosition(_P);
+
+          this.Manager.Add(e, key);
+
+          e.SetActive(false);
+          this.vegetation_.push(e);
+        }
+      }      
     }
 
     Update(_) {
-      this.SpawnCrap_();
+      this.SpawnVegetation_();
     }
   };
 
