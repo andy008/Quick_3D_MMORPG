@@ -31,65 +31,7 @@ const _CHARACTER_MODELS = {
   }
 }
 
-
-class FloatingName {
-  constructor(params) {
-    this.params_ = params;
-    this.Init_();
-  }
-
-  Destroy() {
-    this.element_ = null;
-  }
-
-  Init_() {
-    const modelData = _CHARACTER_MODELS[this.params_.desc.character.class];
-
-    this.element_ = document.createElement('canvas');
-    this.context2d_ = this.element_.getContext('2d');
-    this.context2d_.canvas.width = 256;
-    this.context2d_.canvas.height = 128;
-    this.context2d_.fillStyle = '#FFF';
-    this.context2d_.font = "18pt Helvetica";
-    this.context2d_.shadowOffsetX = 3;
-    this.context2d_.shadowOffsetY = 3;
-    this.context2d_.shadowColor = "rgba(0,0,0,0.3)";
-    this.context2d_.shadowBlur = 4;
-    this.context2d_.textAlign = 'center';
-    this.context2d_.fillText(this.params_.desc.account.name, 128, 64);
-
-    const map = new THREE.CanvasTexture(this.context2d_.canvas);
-
-    this.sprite_ = new THREE.Sprite(
-        new THREE.SpriteMaterial({map: map, color: 0xffffff}));
-    this.sprite_.scale.set(20, 10, 1)
-    this.sprite_.position.y += modelData.nameOffset;
-    this.params_.parent.add(this.sprite_);
-  }
-};
-
-
-class OurLoadingManager {
-  constructor(loader) {
-    this.loader_ = loader;
-    this.files_ = new Set();
-    this.onLoad = () => {};
-  }
-
-  load(file, cb) {
-    this.files_.add(file);
-
-    this.loader_.load(file, (result) => {
-      this.files_.delete(file);
-      cb(result);
-
-      if (this.files_.size == 0) {
-        this.onLoad();
-      }
-    });
-  }
-};
-
+/*
 
 class BasicCharacterControllerProxy {
   constructor(animations) {
@@ -100,6 +42,7 @@ class BasicCharacterControllerProxy {
     return this.animations_;
   }
 };
+*/
 
 
 class AnimatedMesh {
@@ -193,210 +136,7 @@ class AnimatedMesh {
   }
 };
 
-
-class BasicCharacterController {
-  constructor(params) {
-    this._Init(params);
-  }
-
-  _Init(params) {
-    this.params_ = params;
-    this.decceleration_ = new THREE.Vector3(-0.0005, -0.0001, -5.0);
-    this.acceleration_ = new THREE.Vector3(1, 0.25, 50.0);
-    this.velocity_ = new THREE.Vector3(0, 0, 0);
-    this.position_ = new THREE.Vector3();
-    this.quaternion_ = new THREE.Quaternion();
-    this.loaded_ = false;
-
-    this._input = new BasicCharacterControllerInput();
-
-    this.target_ = new AnimatedMesh({
-        scene: params.scene,
-        desc: params.desc,
-    });
-    this.target_.onLoad = () => {
-      this.loaded_ = true;
-      this.stateMachine_.SetState('idle');
-    }
-    this.stateMachine_ = new CharacterFSM(
-        new BasicCharacterControllerProxy(this.target_.animations_));
-  }
-
-  get IsLoaded() {
-    return this.loaded_;
-  }
-
-  get Position() {
-    return this.position_;
-  }
-
-  get Rotation() {
-    return this.quaternion_;
-  }
-
-  SetTransform(p, q) {
-    this.position_.copy(p);
-    this.quaternion_.copy(q);
-    this.target_.group_.position.copy(this.position_);
-    this.target_.group_.quaternion.copy(this.quaternion_);
-  }
-
-  CreateTransformPacket() {
-    return [
-        this.stateMachine_.currentState_.Name,
-        this.position_.toArray(),
-        this.quaternion_.toArray(),
-    ];
-  }
-
-  Update(timeInSeconds) {
-    if (!this.stateMachine_.currentState_) {
-      return;
-    }
-
-    this.stateMachine_.Update(timeInSeconds, this._input);
-
-    const velocity = this.velocity_;
-    const frameDecceleration = new THREE.Vector3(
-        velocity.x * this.decceleration_.x,
-        velocity.y * this.decceleration_.y,
-        velocity.z * this.decceleration_.z
-    );
-    frameDecceleration.multiplyScalar(timeInSeconds);
-    frameDecceleration.z = Math.sign(frameDecceleration.z) * Math.min(
-        Math.abs(frameDecceleration.z), Math.abs(velocity.z));
-
-    velocity.add(frameDecceleration);
-
-    const controlObject = this.target_;
-    const _Q = new THREE.Quaternion();
-    const _A = new THREE.Vector3();
-    const _R = controlObject.quaternion.clone();
-
-    const acc = this.acceleration_.clone();
-    if (this._input._keys.shift) {
-      acc.multiplyScalar(2.0);
-    }
-
-    if (this.stateMachine_.currentState_.Name == 'dance') {
-      acc.multiplyScalar(0.0);
-    }
-
-    if (this._input._keys.forward) {
-      velocity.z += acc.z * timeInSeconds;
-    }
-    if (this._input._keys.backward) {
-      velocity.z -= acc.z * timeInSeconds;
-    }
-    if (this._input._keys.left) {
-      _A.set(0, 1, 0);
-      _Q.setFromAxisAngle(_A, 4.0 * Math.PI * timeInSeconds * this.acceleration_.y);
-      _R.multiply(_Q);
-    }
-    if (this._input._keys.right) {
-      _A.set(0, 1, 0);
-      _Q.setFromAxisAngle(_A, 4.0 * -Math.PI * timeInSeconds * this.acceleration_.y);
-      _R.multiply(_Q);
-    }
-
-    controlObject.quaternion.copy(_R);
-
-    const oldPosition = new THREE.Vector3();
-    oldPosition.copy(controlObject.position);
-
-    const forward = new THREE.Vector3(0, 0, 1);
-    forward.applyQuaternion(controlObject.quaternion);
-    forward.normalize();
-
-    const sideways = new THREE.Vector3(1, 0, 0);
-    sideways.applyQuaternion(controlObject.quaternion);
-    sideways.normalize();
-
-    sideways.multiplyScalar(velocity.x * timeInSeconds);
-    forward.multiplyScalar(velocity.z * timeInSeconds);
-
-    controlObject.position.add(forward);
-    controlObject.position.add(sideways);
-
-    this.position_.copy(controlObject.position);
-    this.quaternion_.copy(controlObject.quaternion);
-
-    this.target_.Update(timeInSeconds);
-  }
-};
-
-class BasicCharacterControllerInput {
-  constructor() {
-    this._Init();    
-  }
-
-  _Init() {
-    this._keys = {
-      forward: false,
-      backward: false,
-      left: false,
-      right: false,
-      space: false,
-      shift: false,
-    };
-    document.addEventListener('keydown', (e) => this.OnKeyDown_(e), false);
-    document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
-  }
-
-  OnKeyDown_(event) {
-    if (event.currentTarget.activeElement != document.body) {
-      return;
-    }
-    switch (event.keyCode) {
-      case 87: // w
-        this._keys.forward = true;
-        break;
-      case 65: // a
-        this._keys.left = true;
-        break;
-      case 83: // s
-        this._keys.backward = true;
-        break;
-      case 68: // d
-        this._keys.right = true;
-        break;
-      case 32: // SPACE
-        this._keys.space = true;
-        break;
-      case 16: // SHIFT
-        this._keys.shift = true;
-        break;
-    }
-  }
-
-  _onKeyUp(event) {
-    if (event.currentTarget.activeElement != document.body) {
-      return;
-    }
-    switch(event.keyCode) {
-      case 87: // w
-        this._keys.forward = false;
-        break;
-      case 65: // a
-        this._keys.left = false;
-        break;
-      case 83: // s
-        this._keys.backward = false;
-        break;
-      case 68: // d
-        this._keys.right = false;
-        break;
-      case 32: // SPACE
-        this._keys.space = false;
-        break;
-      case 16: // SHIFT
-        this._keys.shift = false;
-        break;
-    }
-  }
-};
-
-
+/*
 class FiniteStateMachine {
   constructor() {
     this._states = {};
@@ -429,8 +169,9 @@ class FiniteStateMachine {
     }
   }
 };
+*/
 
-
+/*
 class CharacterFSM extends FiniteStateMachine {
   constructor(proxy) {
     super();
@@ -445,8 +186,9 @@ class CharacterFSM extends FiniteStateMachine {
     this._AddState('dance', DanceState);
   }
 };
+*/
 
-
+/*
 class State {
   constructor(parent) {
     this._parent = parent;
@@ -644,6 +386,7 @@ class IdleState extends State {
     if (!input) {
       return;
     }
+
     if (input._keys.forward || input._keys.backward) {
       this._parent.SetState('walk');
     } else if (input._keys.space) {
@@ -651,47 +394,7 @@ class IdleState extends State {
     }
   }
 };
-
-
-class ThirdPersonCamera {
-  constructor(params) {
-    this.params_ = params;
-    this._camera = params.camera;
-
-    this._currentPosition = new THREE.Vector3();
-    this._currentLookat = new THREE.Vector3();
-  }
-
-  _CalculateIdealOffset() {
-    const idealOffset = new THREE.Vector3(-15, 20, -30);
-    idealOffset.applyQuaternion(this.params_.target.Rotation);
-    idealOffset.add(this.params_.target.Position);
-    return idealOffset;
-  }
-
-  _CalculateIdealLookat() {
-    const idealLookat = new THREE.Vector3(0, 10, 50);
-    idealLookat.applyQuaternion(this.params_.target.Rotation);
-    idealLookat.add(this.params_.target.Position);
-    return idealLookat;
-  }
-
-  Update(timeElapsed) {
-    const idealOffset = this._CalculateIdealOffset();
-    const idealLookat = this._CalculateIdealLookat();
-
-    // const t = 0.05;
-    // const t = 4.0 * timeElapsed;
-    const t = 1.0 - Math.pow(0.001, timeElapsed);
-
-    this._currentPosition.lerp(idealOffset, t);
-    this._currentLookat.lerp(idealLookat, t);
-
-    this._camera.position.copy(this._currentPosition);
-    this._camera.lookAt(this._currentLookat);
-  }
-}
-
+*/
 
 class PlayerEntity {
   constructor(params) {
@@ -729,6 +432,7 @@ class PlayerEntity {
   }
 
   Update(timeElapsed) {
+
     this.controls_.Update(timeElapsed);
     this.thirdPersonCamera_.Update(timeElapsed);
     this.SendTransform_(timeElapsed);
@@ -952,8 +656,8 @@ class BasicMMODemo {
     light.shadow.bias = -0.001;
     light.shadow.mapSize.width = 2048;
     light.shadow.mapSize.height = 2048;
-    light.shadow.camera.near = 0.1;
-    light.shadow.camera.far = 500.0;
+    //light.shadow.camera.near = 0.1;
+    //light.shadow.camera.far = 500.0;
     light.shadow.camera.near = 0.5;
     light.shadow.camera.far = 500.0;
     light.shadow.camera.left = 100;

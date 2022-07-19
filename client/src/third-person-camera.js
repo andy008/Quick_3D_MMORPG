@@ -10,13 +10,15 @@ export const third_person_camera = (() => {
 
       this._params = params;
       this._camera = params.camera;
+      this._target = params.target;
 
       this._currentPosition = new THREE.Vector3();
       this._currentLookat = new THREE.Vector3();
     }
 
     _CalculateIdealOffset() {
-      const idealOffset = new THREE.Vector3(-0, 10, -15);
+      //const idealOffset = new THREE.Vector3(-0, 10, -15);
+      const idealOffset = new THREE.Vector3(0, 8.5, 4);
       idealOffset.applyQuaternion(this._params.target._rotation);
       idealOffset.add(this._params.target._position);
 
@@ -27,7 +29,11 @@ export const third_person_camera = (() => {
     }
 
     _CalculateIdealLookat() {
+      //this._params.target._position.x = ( 1 - this._params._mouse.x ) * 0.002;
+      //this._params.target._position.y = ( 1 - this._params._mouse.y ) * 0.002;
+      //console.log('Params:' + console.log(JSON.stringify(this._target.controls.input)));
       const idealLookat = new THREE.Vector3(0, 5, 20);
+      //const idealLookat = new THREE.Vector3(this._params.target._position.x, this._params.target._position.y, 20);
       idealLookat.applyQuaternion(this._params.target._rotation);
       idealLookat.add(this._params.target._position);
       return idealLookat;
@@ -47,6 +53,11 @@ export const third_person_camera = (() => {
       this._camera.position.copy(this._currentPosition);
       this._camera.lookAt(this._currentLookat);
     }
+
+ 
+    
+
+
   }
 
   return {

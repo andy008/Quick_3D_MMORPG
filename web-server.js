@@ -14,7 +14,7 @@ const options = {
 app.use(express.static('client',[options]));
 //server.use(express.static('client',[]));
 app.listen(8080);
-
+console.log('Server running on port 8080');
 
 /*
 const http = require('http');

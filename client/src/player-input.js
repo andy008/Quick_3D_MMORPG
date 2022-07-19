@@ -22,6 +22,9 @@ export const player_input = (() => {
     }
   
     _Init() {
+
+      this.test = 'test';
+
       this._keys = {
         forward: false,
         backward: false,
@@ -31,7 +34,14 @@ export const player_input = (() => {
         shift: false,
         backspace: false,
       };
+
+      this._mouse = new THREE.Vector2();
+      this._windowHalf = new THREE.Vector2( window.innerWidth / 2, window.innerHeight / 2 );
+
       this._raycaster = new THREE.Raycaster();
+      console.log('Init key and mouse listeners');
+
+      document.addEventListener('mousemove', (e) => this.onMouseMove(e), false );
       document.addEventListener('keydown', (e) => this._onKeyDown(e), false);
       document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
       document.addEventListener('mouseup', (e) => this._onMouseUp(e), false);
@@ -132,6 +142,16 @@ export const player_input = (() => {
           break;
       }
     }
+
+    onMouseMove(event) {  
+      if (event.currentTarget.activeElement != document.body) {
+        return;
+      }
+      this._mouse.x = ( event.clientX - this._windowHalf.x );
+      this._mouse.y = ( event.clientY - this._windowHalf.x );
+  
+      return;
+    }     
   };
 
   return {
