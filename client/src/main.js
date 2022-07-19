@@ -23,6 +23,7 @@ class CrappyMMOAttempt {
   }
 
   _Initialize() {
+    console.log('INITIALIZING!');
     this.entityManager_ = new entity_manager.EntityManager();
 
     document.getElementById('login-ui').style.visibility = 'visible';
