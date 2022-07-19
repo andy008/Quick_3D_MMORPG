@@ -137,12 +137,14 @@ export const network_controller = (() => {
 
           ui.AddEventMessages(events);
 
-          npc.Broadcast({
-              topic: 'network.update',
-              transform: u.transform,
-              stats: u.stats,
-              events: events,
-          });
+          if(npc){
+            npc.Broadcast({
+                topic: 'network.update',
+                transform: u.transform,
+                stats: u.stats,
+                events: events,
+            });
+          }
         }
       } else if (e == 'chat.message') {
         this.FindEntity('ui').GetComponent('UIController').AddChatMessage(d);

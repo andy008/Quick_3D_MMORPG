@@ -349,8 +349,8 @@ export const scenery_controller = (() => {
       }
 
       // lots of small stuff
-      for (let x = -4; x <= 4; x +=0.3) {
-        for (let y = -4; y <= 4; y +=0.3) {
+      for (let x = -3; x <= 3; x +=0.5) {
+        for (let y = -3; y <= 3; y +=0.5) {
           _P.set(x, 0.0, y);
           _P.add(center);
           _P.multiplyScalar(50.0);
@@ -388,8 +388,27 @@ export const scenery_controller = (() => {
       }      
     }
 
+    DestroyVegation_(){
+      // stuff that is a long way from us can be removed
+      for (let i = 0; i < this.vegetation_.length; ++i) {
+        const e = this.vegetation_[i];
+        const dist = e.Position.distanceTo(this.FindEntity('player').Position);
+        if (dist > 500.0) {
+          this.Manager.Remove(e);
+          e.dead_ = true;
+          this.vegetation_.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
     Update(_) {
+      //console.log('Vegetation items before:' + this.vegetation_.length);
       this.SpawnVegetation_();
+      this.DestroyVegation_();
+      //console.log('Vegetation items after:' + this.vegetation_.length);
+      //console.log('=================')
+
     }
   };
 

@@ -36,13 +36,20 @@ export const entity_manager = (() => {
       e.InitEntity();
     }
 
+    Remove(e) {
+      console.log('Remove entity: ' + e.Name);
+      delete this._entitiesMap[e.Name];
+      //e.dispose();
+      //e.Destroy();
+    }    
+
     SetActive(e, b) {
       const i = this._entities.indexOf(e);
 
       if (!b) {
         if (i < 0) {
           return;
-        }
+        }                   
   
         this._entities.splice(i, 1);
       } else {
@@ -74,7 +81,7 @@ export const entity_manager = (() => {
 
         delete this._entitiesMap[e.Name];
   
-        e.Destroy();
+        //e.Destroy();
       }
 
       this._entities = alive;
