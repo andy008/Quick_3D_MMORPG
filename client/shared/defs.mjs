@@ -104,8 +104,8 @@ export const defs = (() => {
       scale: 4.0,
       inventory: {},
       stats: {
-        health: 20,
-        maxHealth: 50,
+        health: 100,
+        maxHealth: 100,
         strength: 25,
         wisdomness: 4,
         benchpress: 3,
@@ -121,7 +121,7 @@ export const defs = (() => {
       'weapon.axe1':
       {
           type: 'weapon',
-          damage: 3,
+          damage: 10,
           renderParams: {
             name: 'Axe',
             scale: 0.125,
@@ -131,7 +131,7 @@ export const defs = (() => {
       'weapon.sword1':
       {
           type: 'weapon',
-          damage: 3,
+          damage: 15,
           renderParams: {
             name: 'Sword',
             scale: 0.125,
@@ -141,7 +141,7 @@ export const defs = (() => {
       'weapon.hammer1':
       {
           type: 'weapon',
-          damage: 3,
+          damage: 5,
           renderParams: {
             name: 'Hammer_Small',
             scale: 0.125,

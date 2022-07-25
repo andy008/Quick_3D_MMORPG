@@ -23,6 +23,14 @@ export const world_client = (() => {
 
       // Hack
       entity.parent_ = this;
+
+
+      // AI constants
+      this.ai_ = {
+        detect_range: 500,
+        attack_range: 10 
+      };
+
     }
 
     Destroy() {
@@ -133,7 +141,7 @@ export const world_client = (() => {
         return e.ID != this.entity_.ID;
       };
 
-      const nearby = this.entity_.FindNear(500).filter(e => _Filter(e));
+      const nearby = this.entity_.FindNear(150).filter(e => _Filter(e));
 
       const updates = [{
           id: this.entity_.ID,
@@ -216,7 +224,7 @@ export const world_client = (() => {
       const _IsPlayer = (e) => {
         return !e.isAI;
       };
-      const nearby = this.entity_.FindNear(50.0).filter(e => e.Health > 0).filter(_IsPlayer);
+      const nearby = this.entity_.FindNear(150).filter(e => e.Health > 0).filter(_IsPlayer);
 
       if (nearby.length > 0) {
         this.parent_.SetState(new AIState_FollowToAttack(nearby[0]));
@@ -262,10 +270,10 @@ export const world_client = (() => {
 
       const distance = vec3.distance(this.entity_.position_, this.target_.position_);
 
-      if (distance < 10.0) {
+      if (distance < 10) {
         this.entity_.OnActionAttack();
         this.parent_.SetState(new AIState_WaitAttackDone(this.target_));
-      } else if (distance > 100.0) {
+      } else if (distance > 150) {
         this.parent_.SetState(new AIState_JustSitThere());
       }
     }

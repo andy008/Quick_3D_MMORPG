@@ -85,6 +85,7 @@ export const threejs_component = (() => {
   
       this.threejs_ = new THREE.WebGLRenderer({
         antialias: false,
+        powerPreference: "high-performance",
       });
       this.threejs_.outputEncoding = THREE.sRGBEncoding;
       this.threejs_.gammaFactor = 2.2;
@@ -95,11 +96,25 @@ export const threejs_component = (() => {
       this.threejs_.domElement.id = 'threejs';
   
       document.getElementById('container').appendChild(this.threejs_.domElement);
-  
-      const fov = 60;
-      const aspect = 1920 / 1080;
+
+      let fov, far
+      // Mobile camera
+      if (window.innerWidth <= 768) {
+        fov = 50;
+        far = 1200; 
+        // 769px - 1080px screen width camera
+      } else if (window.innerWidth >= 769 && window.innerWidth <= 1080) {
+        fov = 50;
+        far = 1475;        
+        // > 1080px screen width res camera
+      } else {
+        fov = 40;
+        far = 5000;
+      }
+        
+      const aspect = window.innerWidth / window.innerHeight;
       const near = 1.0;
-      const far = 10000.0;
+
       this.camera_ = new THREE.PerspectiveCamera(fov, aspect, near, far);
       this.camera_.position.set(25, 10, 25);
   
@@ -125,6 +140,12 @@ export const threejs_component = (() => {
 
       this.LoadSky_();
     }
+
+    // get the 1st, 3rd and 2nd last element of an array
+    GetThreeElements(array) {
+      return [array[0], array[array.length - 1], array[array.length - 2]];
+    }
+   
 
     LoadSky_() {
       const hemiLight = new THREE.HemisphereLight(0x424a75, 0x6a88b5, 0.7);

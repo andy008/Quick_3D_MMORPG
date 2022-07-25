@@ -17,8 +17,8 @@ export const third_person_camera = (() => {
     }
 
     _CalculateIdealOffset() {
-      //const idealOffset = new THREE.Vector3(-0, 10, -15);
-      const idealOffset = new THREE.Vector3(0, 8.5, 4);
+      const idealOffset = new THREE.Vector3(-0, 10, -15);
+      //const idealOffset = new THREE.Vector3(0, 8.5, 4);
       idealOffset.applyQuaternion(this._params.target._rotation);
       idealOffset.add(this._params.target._position);
 
@@ -52,12 +52,7 @@ export const third_person_camera = (() => {
 
       this._camera.position.copy(this._currentPosition);
       this._camera.lookAt(this._currentLookat);
-    }
-
- 
-    
-
-
+    } 
   }
 
   return {

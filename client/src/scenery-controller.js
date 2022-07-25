@@ -7,7 +7,6 @@ import {spatial_grid_controller} from './spatial-grid-controller.js';
 import {math} from '/shared/math.mjs';
 import {noise} from '/shared/noise.mjs';
 
-
 export const scenery_controller = (() => {
 
   const _SCENERY = {
@@ -19,7 +18,7 @@ export const scenery_controller = (() => {
         Leaves: 'Birch_Leaves_Yellow.png'
       },
       scale: 0.075,
-      biomes: ['forest','arid', 'desert'],
+      biomes: ['forest','arid'],
       collision: true,
     },
     tree1: {
@@ -39,6 +38,7 @@ export const scenery_controller = (() => {
       names: {},
       scale: 0.25,
       biomes: ['arid', 'desert'],
+      collision: true,
     },
     rockMoss1: {
       base: 'Rock_Moss_1.fbx',
@@ -46,28 +46,8 @@ export const scenery_controller = (() => {
       names: {},
       scale: 0.25,
       biomes: ['forest'],
-    },
-    plant1: {
-      base: 'Plant_1.fbx',
-      resourcePath: './resources/nature/FBX/',
-      names: {},
-      scale: 0.05,
-      biomes: ['forest', 'arid'],
-    },
-    grass1: {
-      base: 'Grass_1.fbx',
-      resourcePath: './resources/nature/FBX/',
-      names: {},
-      scale: 0.05,
-      biomes: ['forest', 'arid'],
-    },
-    flowers1: {
-      base: 'Flowers.fbx',
-      resourcePath: './resources/nature/FBX/',
-      names: {},
-      scale: 0.05,
-      biomes: ['forest'],
-    },
+      collision: true,
+    }
   };
 
   const _SCENERYSMALL = {
@@ -152,6 +132,7 @@ export const scenery_controller = (() => {
     }
 
     SpawnClouds_() {
+      
       for (let i = 0; i < 20; ++i) {
         const index = math.rand_int(1, 3);
         const pos = new THREE.Vector3(
@@ -175,9 +156,12 @@ export const scenery_controller = (() => {
         e.SetQuaternion(q);
 
         this.Manager.Add(e);
-        e.SetActive(false);
+        e.SetActive(false);  
       }
+      
     }
+
+
 
     FindBiome_(terrain, pos) {
       const biome = terrain.GetBiomeAt(pos);
@@ -259,15 +243,15 @@ export const scenery_controller = (() => {
           scene: this.params_.scene,
           resourcePath: randomProp.resourcePath,
           resourceName: randomProp.base,
-          textures: {
-            resourcePath: './resources/trees/Textures/',
-            names: randomProp.names,
-            wrap: true,
-          },
+          //textures: {
+          //  resourcePath: './resources/trees/Textures/',
+          //  names: randomProp.names,
+          //  wrap: true,
+          //},
           emissive: new THREE.Color(0x000000),
           specular: new THREE.Color(0x000000),
           scale: randomProp.scale * (0.8 + this.noise_.Get(spawnPos.x, 4.0, spawnPos.z) * 0.4),
-          castShadow: true,
+          castShadow: false,
           receiveShadow: true,
           onMaterial: (m) => {
             if (m.name.search('Leaves') >= 0) {
@@ -275,11 +259,6 @@ export const scenery_controller = (() => {
             }
           }
         }));
-        if (randomProp.collision) {
-          e.AddComponent(
-            new spatial_grid_controller.SpatialGridController(
-                {grid: this.params_.grid}));
-        }
 
         const q = new THREE.Quaternion().setFromAxisAngle(
             new THREE.Vector3(0, 1, 0), this.noise_.Get(spawnPos.x, 5.0, spawnPos.z) * 360);
@@ -319,8 +298,12 @@ export const scenery_controller = (() => {
           _P.add(center);
           _P.multiplyScalar(50.0);
 
+          // already an object here 
           const key = '__scenery__[' + _P.x + '][' + _P.z + ']';
-          if (this.FindEntity(key)) {
+          const obj = this.FindEntity(key);
+          if (obj) {
+            obj.visible = true;
+            this.vegetation_.push(obj);
             continue;
           }
 
@@ -333,7 +316,7 @@ export const scenery_controller = (() => {
           const biome = this.FindBiome_(terrain, _P);
 
           const roll = this.noise_.Get(_V.x, 2.0, _V.z);
-          if (roll > _BIOMES[biome]) {
+          if (roll > _BIOMES[biome]) {            
             continue;
           }
 
@@ -344,19 +327,27 @@ export const scenery_controller = (() => {
           this.Manager.Add(e, key);
 
           e.SetActive(false);
-          this.vegetation_.push(e);
+          const veg_position = new THREE.Vector3(e.Position);
+          const veg = {
+            Name: e.name,
+            Position: veg_position,
+          }
+          this.vegetation_.push(veg);
         }
       }
 
       // lots of small stuff
-      for (let x = -3; x <= 3; x +=0.5) {
-        for (let y = -3; y <= 3; y +=0.5) {
+      for (let x = -3; x <= 3; x +=0.3) {
+        for (let y = -3; y <= 3; y +=0.4) {
           _P.set(x, 0.0, y);
           _P.add(center);
           _P.multiplyScalar(50.0);
 
           const key = '__scenery__[' + _P.x + '][' + _P.z + ']';
-          if (this.FindEntity(key)) {
+          const obj = this.FindEntity(key);
+          if (obj) {
+            obj.visible = true;
+            this.vegetation_.push(obj);
             continue;
           }
 
@@ -383,24 +374,33 @@ export const scenery_controller = (() => {
           this.Manager.Add(e, key);
 
           e.SetActive(false);
-          this.vegetation_.push(e);
+          const veg_position = new THREE.Vector3(e.Position);
+          const veg = {
+            Name: e.name,
+            Position: veg_position,
+          }
+          this.vegetation_.push(veg);
         }
       }      
     }
 
+
+
     DestroyVegation_(){
-      // stuff that is a long way from us can be removed
+      // stuff that is a long way from us can be not removed but HIDDEN
       for (let i = 0; i < this.vegetation_.length; ++i) {
-        const e = this.vegetation_[i];
-        const dist = e.Position.distanceTo(this.FindEntity('player').Position);
-        if (dist > 500.0) {
-          this.Manager.Remove(e);
-          e.dead_ = true;
+        const veg = this.vegetation_[i];     
+        const dist = veg.Position.distanceTo(this.FindEntity('player').Position);
+        if (dist > 150.0) {
+          const e = this.FindEntity(veg.Name)
+          //this.Manager.Remove(e);
+          e.visible = false;
+          //e.dead_ = true;
           this.vegetation_.splice(i, 1);
           i--;
         }
       }
-    }
+    }    
 
     Update(_) {
       //console.log('Vegetation items before:' + this.vegetation_.length);
