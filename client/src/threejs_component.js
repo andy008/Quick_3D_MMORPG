@@ -109,7 +109,7 @@ export const threejs_component = (() => {
         // > 1080px screen width res camera
       } else {
         fov = 40;
-        far = 5000;
+        far = 7500;
       }
         
       const aspect = window.innerWidth / window.innerHeight;

@@ -1,5 +1,6 @@
 var express = require('express');
 var app = express();
+/*
 const options = {
 	setHeaders (res, path, stat) {
 		res.set('x-timestamp', Date.now()),
@@ -13,8 +14,19 @@ const options = {
 }
 app.use(express.static('client',[options]));
 //server.use(express.static('client',[]));
-app.listen(8080);
-console.log('Server running on port 8080');
+*/
+// Setting up the public directory
+app.use(express.static('client', {
+	setHeaders: (res) => {
+	res.set('x-timestamp', Date.now()),
+	  res.set('Cross-Origin-Opener-Policy', 'same-origin');
+	  res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+	}
+}));
+
+
+app.listen(8080,() => console.log('Server running on port 8080'));
+
 
 /*
 const http = require('http');
