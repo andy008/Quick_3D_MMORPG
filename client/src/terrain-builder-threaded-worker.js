@@ -4,7 +4,7 @@ import {texture_splatter} from './texture-splatter.js' ;
 
 import {math} from '../shared/math.mjs';
 import {noise} from '../shared/noise.mjs';
-import {terrain_height} from '../shared/terrain-height.mjs' ;
+import {terrain_height} from '../shared/terrain-height.mjs' ; 
 
 
 class _TerrainBuilderThreadedWorker {

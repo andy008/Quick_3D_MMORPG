@@ -27,13 +27,13 @@ export const terrain = (function() {
 
       const loader = new THREE.TextureLoader();
 
-      const noiseTexture = loader.load('/client/resources/terrain/simplex-noise.png');
+      const noiseTexture = loader.load('/client/resources/terrain/simplex-noise.png'); 
       noiseTexture.wrapS = THREE.RepeatWrapping;
       noiseTexture.wrapT = THREE.RepeatWrapping;
 
       const diffuse = new textures.TextureAtlas(params);
       diffuse.Load('diffuse', [
-        '/client/resources/terrain/dirt_01_diffuse-1024.png', 
+        '/client/resources/terrain/dirt_01_diffuse-1024.png',
         '/client/resources/terrain/grass1-albedo3-1024.png',
         '/client/resources/terrain/sandyground-albedo-1024.png',
         '/client/resources/terrain/worn-bumpy-rock-albedo-1024.png',

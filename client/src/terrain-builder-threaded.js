@@ -78,7 +78,7 @@ export const terrain_builder_threaded = (function() {
       this._old = [];
 
       this._workerPool = new WorkerThreadPool(
-          _NUM_WORKERS, 'src/terrain-builder-threaded-worker.js');
+          _NUM_WORKERS, './terrain-builder-threaded-worker.js');
   
       this._params = params;
     }
