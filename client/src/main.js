@@ -10,6 +10,7 @@ import {load_controller} from './load-controller.js';
 import {spawners} from './spawners.js';
 import {terrain} from './terrain.js';
 import {inventory_controller} from './inventory-controller.js';
+import {webxr_component} from './webxr-component.js';
 
 import {spatial_hash_grid} from '/shared/spatial-hash-grid.mjs';
 import {defs} from '/shared/defs.mjs';
@@ -101,6 +102,7 @@ class CrappyMMOAttempt {
         grid: this.grid_,
         scene: this.scene_,
         camera: this.camera_,
+        renderer: this.threejs_,
     }));
     spawner.AddComponent(new spawners.NetworkEntitySpawner({
         grid: this.grid_,
@@ -113,6 +115,15 @@ class CrappyMMOAttempt {
     const database = new entity.Entity();
     database.AddComponent(new inventory_controller.InventoryDatabaseController());
     this.entityManager_.Add(database, 'database');
+
+    // WebXR Controller
+    const webxr = new entity.Entity();
+    webxr.AddComponent(new webxr_component.WebXRController({
+        renderer: this.threejs_,
+        scene: this.scene_,
+        camera: this.camera_,
+    }));
+    this.entityManager_.Add(webxr, 'webxr');
 
     // HACK
     for (let k in defs.WEAPONS_DATA) {
@@ -142,7 +153,8 @@ class CrappyMMOAttempt {
   }
 
   RAF_() {
-    requestAnimationFrame((t) => {
+    // For VR mode, use setAnimationLoop instead of requestAnimationFrame
+    this.threejs_.setAnimationLoop((t) => {
       if (this.previousRAF_ === null) {
         this.previousRAF_ = t;
       }
@@ -150,10 +162,6 @@ class CrappyMMOAttempt {
       this.threejs_.render(this.scene_, this.camera_);
       this.Step_(t - this.previousRAF_);
       this.previousRAF_ = t;
-
-      setTimeout(() => {
-        this.RAF_();
-      }, 1);
     });
   }
 

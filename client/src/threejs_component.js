@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.124/build/three.module.js';
+import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.124/examples/jsm/webxr/VRButton.js';
 
 import {entity} from "./entity.js";
 
@@ -94,8 +95,21 @@ export const threejs_component = (() => {
       this.threejs_.setPixelRatio(window.devicePixelRatio);
       this.threejs_.setSize(window.innerWidth, window.innerHeight);
       this.threejs_.domElement.id = 'threejs';
+
+      // Enable WebXR support
+      this.threejs_.xr.enabled = true;
   
       document.getElementById('container').appendChild(this.threejs_.domElement);
+
+      // Add VR button if WebXR is supported
+      if ('xr' in navigator) {
+        const vrButton = VRButton.createButton(this.threejs_);
+        vrButton.style.position = 'absolute';
+        vrButton.style.bottom = '20px';
+        vrButton.style.left = '20px';
+        vrButton.style.zIndex = '999';
+        document.getElementById('container').appendChild(vrButton);
+      }
 
       let fov, far
       // Mobile camera
