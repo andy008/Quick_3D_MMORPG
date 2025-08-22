@@ -101,6 +101,7 @@ class CrappyMMOAttempt {
         grid: this.grid_,
         scene: this.scene_,
         camera: this.camera_,
+        renderer: this.threejs_,
     }));
     spawner.AddComponent(new spawners.NetworkEntitySpawner({
         grid: this.grid_,
@@ -142,7 +143,8 @@ class CrappyMMOAttempt {
   }
 
   RAF_() {
-    requestAnimationFrame((t) => {
+    // For VR mode, use setAnimationLoop instead of requestAnimationFrame
+    this.threejs_.setAnimationLoop((t) => {
       if (this.previousRAF_ === null) {
         this.previousRAF_ = t;
       }
@@ -150,10 +152,6 @@ class CrappyMMOAttempt {
       this.threejs_.render(this.scene_, this.camera_);
       this.Step_(t - this.previousRAF_);
       this.previousRAF_ = t;
-
-      setTimeout(() => {
-        this.RAF_();
-      }, 1);
     });
   }
 
