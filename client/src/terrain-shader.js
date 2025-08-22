@@ -436,29 +436,29 @@ vec4 _TriplanarN(vec3 pos, vec3 normal, float texSlice, sampler2DArray tex) {
   // TRIPLANAR SPLATTING w/ NORMALS & UVS
   vec3 worldSpaceNormal = normalize(vNormal);
   vec4 diffuseSamples[4];
-  // vec4 normalSamples[4];
+  vec4 normalSamples[4];
   
   for (int i = 0; i < 4; ++i) {
     vec4 d = vec4(0.0);
-    // vec4 n = vec4(0.0);
+    vec4 n = vec4(0.0);
     if (weightValues[i] > 0.0) {
       d = _Triplanar_UV(
           worldPosition, worldSpaceNormal, weightIndices[i], TRIPLANAR_diffuseMap);
-      // n = _TriplanarN_UV(
-      //     worldPosition, worldSpaceNormal, weightIndices[i], TRIPLANAR_normalMap);
+      n = _TriplanarN_UV(
+          worldPosition, worldSpaceNormal, weightIndices[i], TRIPLANAR_normalMap);
   
       d.w *= weightValues[i];
-      // n.w = d.w;
+      n.w = d.w;
     }
   
     diffuseSamples[i] = d;
-    // normalSamples[i] = n;
+    normalSamples[i] = n;
   }
   
   vec4 diffuseBlended = _TerrainBlend_4(diffuseSamples);
-  // vec4 normalBlended = _TerrainBlend_4(normalSamples);
+  vec4 normalBlended = _TerrainBlend_4(normalSamples);
   diffuseColor = sRGBToLinear(diffuseBlended);
-  // normal = normalBlended.xyz;
+  normal = normalBlended.xyz;
 }
 
     `;
