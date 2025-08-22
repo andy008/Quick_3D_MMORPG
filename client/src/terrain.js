@@ -75,14 +75,16 @@ export const terrain = (function() {
         const fi1 = s.fragmentShader.search('#include <lights_physical_fragment>');
         s.fragmentShader = [s.fragmentShader.slice(0, fi1) + terrain_shader.PS2 + s.fragmentShader.slice(fi1)].join('');
 
-        s.uniforms.TRIPLANAR_normalMap = {value: normal.Info['normal'].atlas};
-        s.uniforms.TRIPLANAR_diffuseMap = {value: diffuse.Info['diffuse'].atlas};
+        s.uniforms.TRIPLANAR_normalMap = {value: normal.Info['normal'] ? normal.Info['normal'].atlas : null};
+        s.uniforms.TRIPLANAR_diffuseMap = {value: diffuse.Info['diffuse'] ? diffuse.Info['diffuse'].atlas : null};
         s.uniforms.TRIPLANAR_noiseMap = {value: noiseTexture};
 
         diffuse.onLoad = () => {     
+          console.log('Terrain: Diffuse texture atlas loaded, updating shader uniform');
           s.uniforms.TRIPLANAR_diffuseMap.value = diffuse.Info['diffuse'].atlas;
         };
         normal.onLoad = () => {     
+          console.log('Terrain: Normal texture atlas loaded, updating shader uniform');
           s.uniforms.TRIPLANAR_normalMap.value = normal.Info['normal'].atlas;
         };
   

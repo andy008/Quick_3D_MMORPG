@@ -48,19 +48,34 @@ export const textures = (function() {
       }
 
       _OnLoad() {
+        console.log('TextureAtlas: Starting texture loading process...');
         for (let k in this._textures) {
           const atlas = this._textures[k];
-          const data = new Uint8Array(atlas.textures.length * 4 * 1024 * 1024);
+          const targetSize = 1024; // Standardize all textures to 1024x1024
+          const data = new Uint8Array(atlas.textures.length * 4 * targetSize * targetSize);
+
+          console.log(`TextureAtlas: Processing atlas '${k}' with ${atlas.textures.length} textures`);
 
           for (let t = 0; t < atlas.textures.length; t++) {
             const curTexture = atlas.textures[t];
-            const curData = _GetImageData(curTexture.image);
-            const offset = t * (4 * 1024 * 1024);
-
+            let curData;
+            
+            console.log(`TextureAtlas: Processing texture ${t}, size: ${curTexture.image.width}x${curTexture.image.height}`);
+            
+            // Check if texture needs resizing
+            if (curTexture.image.width !== targetSize || curTexture.image.height !== targetSize) {
+              console.log(`TextureAtlas: Resizing texture ${t} from ${curTexture.image.width}x${curTexture.image.height} to ${targetSize}x${targetSize}`);
+              // Resize texture to target size
+              curData = this._resizeImageData(curTexture.image, targetSize, targetSize);
+            } else {
+              curData = _GetImageData(curTexture.image);
+            }
+            
+            const offset = t * (4 * targetSize * targetSize);
             data.set(curData.data, offset);
           }
     
-          const diffuse = new THREE.DataTexture2DArray(data, 1024, 1024, atlas.textures.length);
+          const diffuse = new THREE.DataTexture2DArray(data, targetSize, targetSize, atlas.textures.length);
           diffuse.format = THREE.RGBAFormat;
           diffuse.type = THREE.UnsignedByteType;
           diffuse.minFilter = THREE.LinearMipMapLinearFilter;
@@ -68,6 +83,7 @@ export const textures = (function() {
           diffuse.wrapS = THREE.RepeatWrapping;
           diffuse.wrapT = THREE.RepeatWrapping;
           diffuse.generateMipmaps = true;
+          diffuse.needsUpdate = true; // Critical: Tell Three.js to upload texture to GPU
 
           const caps = this._threejs.capabilities;
           const aniso = caps.getMaxAnisotropy();
@@ -75,9 +91,25 @@ export const textures = (function() {
           diffuse.anisotropy = 4;
 
           atlas.atlas = diffuse;
+          console.log(`TextureAtlas: Successfully created DataTexture2DArray for atlas '${k}'`);
         }
 
+        console.log('TextureAtlas: All textures loaded, calling onLoad callback');
         this.onLoad();
+      }
+
+      _resizeImageData(image, targetWidth, targetHeight) {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        const context = canvas.getContext('2d');
+        // Use high-quality scaling
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(image, 0, 0, targetWidth, targetHeight);
+        
+        return context.getImageData(0, 0, targetWidth, targetHeight);
       }
 
       _LoadAtlas(atlas, names) {
