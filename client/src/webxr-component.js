@@ -142,6 +142,12 @@ export const webxr_component = (() => {
         desktopUI.style.display = 'none';
       }
 
+      // Disable third person camera in VR mode
+      const thirdPersonCamera = this.FindEntity('player')?.GetComponent('ThirdPersonCamera');
+      if (thirdPersonCamera) {
+        thirdPersonCamera._vrModeActive = true;
+      }
+
       this.Broadcast({
         topic: 'vr.session.start'
       });
@@ -154,6 +160,12 @@ export const webxr_component = (() => {
       const desktopUI = document.getElementById('game-ui');
       if (desktopUI) {
         desktopUI.style.display = 'block';
+      }
+
+      // Re-enable third person camera
+      const thirdPersonCamera = this.FindEntity('player')?.GetComponent('ThirdPersonCamera');
+      if (thirdPersonCamera) {
+        thirdPersonCamera._vrModeActive = false;
       }
 
       this.Broadcast({
