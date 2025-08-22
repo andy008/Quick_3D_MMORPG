@@ -34,9 +34,21 @@ export const network_controller = (() => {
     }
 
     SetupSocket_() {
-      this.socket_ = io('ws://localhost:3000', {
+      // if not running locally, using helium-server.infomaxim.com
+      /*
+      let server = 'ws://helium.infomaxim.com';
+      if (window.location.hostname == 'localhost' ||
+          window.location.hostname == '127.0.0.1') {
+        server = 'ws://localhost:3051';
+      }
+      */
+
+      // Create a socket connection to the server
+      this.socket_ = io({
+          path: "/socket.io",
+          reconnectionAttempts: 3,
           reconnection: false,
-          transports: ['websocket'],
+          transports: ['websocket','polling'],
           timeout: 10000,
       });
   

@@ -1,5 +1,5 @@
 
-import {terrain_constants} from './terrain-constants.mjs';
+import {terrain_constants} from 'terrain-constants.mjs';
 import {noise} from './noise.mjs';
 
 

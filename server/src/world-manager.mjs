@@ -3,9 +3,9 @@ import {quat, vec3} from 'gl-matrix';
 import {world_client} from './world-client.mjs';
 import {world_entity} from './world-entity.mjs';
 
-import {spatial_hash_grid} from '../../client/shared/spatial-hash-grid.mjs';
-import {terrain_height} from '../../client/shared/terrain-height.mjs';
-import {defs} from '../../client/shared/defs.mjs';
+import {spatial_hash_grid} from '../../clientshared/spatial-hash-grid.mjs';
+import {terrain_height} from '../../clientshared/terrain-height.mjs';
+import {defs} from '../../clientshared/defs.mjs';
 
 
 export const world_manager = (() => {
