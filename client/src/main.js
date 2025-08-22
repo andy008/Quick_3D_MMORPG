@@ -1,4 +1,20 @@
-import {GUI} from 'https://cdn.jsdelivr.net/npm/three@0.124/examples/jsm/libs/dat.gui.module.js';
+// Mock GUI class to replace dat.gui for offline use
+class GUI {
+  constructor() {
+    this.folders = {};
+  }
+  
+  addFolder(name) {
+    return {
+      add: () => ({}),
+      addColor: () => ({}),
+    };
+  }
+  
+  close() {}
+}
+
+//import {GUI} from 'https://cdn.jsdelivr.net/npm/three@0.124/examples/jsm/libs/dat.gui.module.js';
 
 import {entity_manager} from './entity-manager.js';
 import {entity} from './entity.js';
