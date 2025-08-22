@@ -1,6 +1,6 @@
 import {quat, vec3} from 'gl-matrix';
 
-import {defs} from '../../clientshared/defs.mjs';
+import {defs} from '../../client/shared/defs.mjs';
 
 
 export const world_entity = (() => {

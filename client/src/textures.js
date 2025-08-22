@@ -73,7 +73,7 @@ export const textures = (function() {
           const aniso = caps.getMaxAnisotropy();
 
           diffuse.anisotropy = 4;
-
+          //diffuse.needsUpdate = true;
           atlas.atlas = diffuse;
         }
 
