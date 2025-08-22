@@ -50,6 +50,12 @@ export const player_input = (() => {
       this._vrControllers = [];
       this._initVRControllers();
     }
+
+    InitComponent() {
+      // Register for VR events from WebXR component
+      this._RegisterHandler('vr.controller.select', (m) => this._OnVRSelect(m));
+      this._RegisterHandler('vr.controller.thumbstick', (m) => this._OnVRThumbstick(m));
+    }
   
     _onMouseUp(event) {
       const rect = document.getElementById('threejs').getBoundingClientRect();
@@ -202,7 +208,72 @@ export const player_input = (() => {
       console.log(`VR Controller ${controllerIndex} connected:`, event.data);
     }
 
+    _onVRControllerConnected(event, controllerIndex) {
+      console.log(`VR Controller ${controllerIndex} connected:`, event.data);
+    }
+
+    _OnVRSelect(msg) {
+      if (msg.selecting) {
+        this._handleVRInteraction(null, msg.controllerIndex);
+      }
+    }
+
+    _OnVRThumbstick(msg) {
+      // Map VR thumbstick to movement keys
+      const threshold = 0.3;
+      
+      // Forward/backward movement (Y axis)
+      this._keys.forward = msg.y < -threshold;
+      this._keys.backward = msg.y > threshold;
+      
+      // Left/right movement (X axis)  
+      this._keys.left = msg.x < -threshold;
+      this._keys.right = msg.x > threshold;
+    }
+
     _handleVRInteraction(event, controllerIndex) {
+      // Use WebXR component to get controller position and direction
+      const webxr = this.FindEntity('webxr');
+      if (!webxr) return;
+      
+      const webxrController = webxr.GetComponent('WebXRController');
+      if (!webxrController) return;
+
+      const controllerPosition = webxrController.GetControllerWorldPosition(controllerIndex);
+      const controllerDirection = webxrController.GetControllerWorldDirection(controllerIndex);
+      
+      if (!controllerPosition || !controllerDirection) return;
+
+      // Create raycaster from controller position and direction
+      const raycaster = new THREE.Raycaster();
+      raycaster.ray.origin.copy(controllerPosition);
+      raycaster.ray.direction.copy(controllerDirection);
+
+      // Check for pickable objects (similar to mouse interaction)
+      const pickables = this.Manager.Filter((e) => {
+        const p = e.GetComponent('PickableComponent');
+        if (!p) {
+          return false;
+        }
+        return e._mesh;
+      });
+
+      // Hide quest UI
+      document.getElementById('quest-ui').style.visibility = 'hidden';
+
+      for (let p of pickables) {
+        const box = new THREE.Box3().setFromObject(p._mesh);
+        if (raycaster.ray.intersectsBox(box)) {
+          p.Broadcast({
+              topic: 'input.picked'
+          });
+          break;
+        }
+      }
+    }
+
+    // Legacy VR interaction method (kept for compatibility)
+    _handleVRInteractionLegacy(event, controllerIndex) {
       const controller = this._vrControllers[controllerIndex]?.controller;
       if (!controller) return;
 

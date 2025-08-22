@@ -10,6 +10,7 @@ import {load_controller} from './load-controller.js';
 import {spawners} from './spawners.js';
 import {terrain} from './terrain.js';
 import {inventory_controller} from './inventory-controller.js';
+import {webxr_component} from './webxr-component.js';
 
 import {spatial_hash_grid} from '/shared/spatial-hash-grid.mjs';
 import {defs} from '/shared/defs.mjs';
@@ -114,6 +115,15 @@ class CrappyMMOAttempt {
     const database = new entity.Entity();
     database.AddComponent(new inventory_controller.InventoryDatabaseController());
     this.entityManager_.Add(database, 'database');
+
+    // WebXR Controller
+    const webxr = new entity.Entity();
+    webxr.AddComponent(new webxr_component.WebXRController({
+        renderer: this.threejs_,
+        scene: this.scene_,
+        camera: this.camera_,
+    }));
+    this.entityManager_.Add(webxr, 'webxr');
 
     // HACK
     for (let k in defs.WEAPONS_DATA) {
