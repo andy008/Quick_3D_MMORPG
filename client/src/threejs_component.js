@@ -170,12 +170,12 @@ export const threejs_component = (() => {
   
       const loader = new THREE.CubeTextureLoader();
       const texture = loader.load([
-          './resources/terrain/space-posx.jpg',
-          './resources/terrain/space-negx.jpg',
-          './resources/terrain/space-posy.jpg',
-          './resources/terrain/space-negy.jpg',
-          './resources/terrain/space-posz.jpg',
-          './resources/terrain/space-negz.jpg',
+          '/client/resources/terrain/space-posx.jpg',
+          '/client/resources/terrain/space-negx.jpg',
+          '/client/resources/terrain/space-posy.jpg',
+          '/client/resources/terrain/space-negy.jpg',
+          '/client/resources/terrain/space-posz.jpg',
+          '/client/resources/terrain/space-negz.jpg',
       ]);
       texture.encoding = THREE.sRGBEncoding;
   
