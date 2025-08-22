@@ -80,11 +80,11 @@ export const terrain = (function() {
         s.uniforms.TRIPLANAR_noiseMap = {value: noiseTexture};
 
         diffuse.onLoad = () => {     
-          console.log('Terrain: Diffuse texture atlas loaded, updating shader uniform');
+          console.log('Terrain: Diffuse texture atlas loaded, updating shader uniforms');
           s.uniforms.TRIPLANAR_diffuseMap.value = diffuse.Info['diffuse'].atlas;
         };
         normal.onLoad = () => {     
-          console.log('Terrain: Normal texture atlas loaded, updating shader uniform');
+          console.log('Terrain: Normal texture atlas loaded, updating shader uniforms');
           s.uniforms.TRIPLANAR_normalMap.value = normal.Info['normal'].atlas;
         };
   

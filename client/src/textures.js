@@ -48,23 +48,19 @@ export const textures = (function() {
       }
 
       _OnLoad() {
-        console.log('TextureAtlas: Starting texture loading process...');
+        console.log('TextureAtlas: Processing texture atlases...');
         for (let k in this._textures) {
           const atlas = this._textures[k];
           const targetSize = 1024; // Standardize all textures to 1024x1024
           const data = new Uint8Array(atlas.textures.length * 4 * targetSize * targetSize);
 
-          console.log(`TextureAtlas: Processing atlas '${k}' with ${atlas.textures.length} textures`);
-
           for (let t = 0; t < atlas.textures.length; t++) {
             const curTexture = atlas.textures[t];
             let curData;
             
-            console.log(`TextureAtlas: Processing texture ${t}, size: ${curTexture.image.width}x${curTexture.image.height}`);
-            
             // Check if texture needs resizing
             if (curTexture.image.width !== targetSize || curTexture.image.height !== targetSize) {
-              console.log(`TextureAtlas: Resizing texture ${t} from ${curTexture.image.width}x${curTexture.image.height} to ${targetSize}x${targetSize}`);
+              console.log(`TextureAtlas: Resizing texture from ${curTexture.image.width}x${curTexture.image.height} to ${targetSize}x${targetSize}`);
               // Resize texture to target size
               curData = this._resizeImageData(curTexture.image, targetSize, targetSize);
             } else {
@@ -91,10 +87,9 @@ export const textures = (function() {
           diffuse.anisotropy = 4;
 
           atlas.atlas = diffuse;
-          console.log(`TextureAtlas: Successfully created DataTexture2DArray for atlas '${k}'`);
         }
 
-        console.log('TextureAtlas: All textures loaded, calling onLoad callback');
+        console.log('TextureAtlas: All texture atlases loaded successfully');
         this.onLoad();
       }
 
