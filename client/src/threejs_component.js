@@ -96,6 +96,10 @@ export const threejs_component = (() => {
       this.threejs_.setSize(window.innerWidth, window.innerHeight);
       this.threejs_.domElement.id = 'threejs';
 
+      this.threejs_.debug.checkShaderErrors = true;          // logs shader compile issues
+      console.log('WebGL2?', this.threejs_.capabilities.isWebGL2); // should be true
+
+
       // Enable WebXR support
       this.threejs_.xr.enabled = true;
   
