@@ -16,7 +16,7 @@ app.use(express.static('client',[options]));
 //server.use(express.static('client',[]));
 */
 // Setting up the public directory
-app.use(express.static('/', {
+app.use(express.static('.', {
 	setHeaders: (res) => {
 		res.set('x-timestamp', Date.now()),
 		res.set('Cross-Origin-Opener-Policy', 'same-origin');

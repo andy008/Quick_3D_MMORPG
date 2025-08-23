@@ -11,6 +11,8 @@ export const webxr_component = (() => {
       this._vrControllers = [];
       this._controllerModels = [];
       this._isVRActive = false;
+      this._vrBasePosition = new THREE.Vector3(); // Base position for VR space
+      this._vrGroup = null; // Group to contain VR space
     }
 
     InitComponent() {
@@ -26,9 +28,13 @@ export const webxr_component = (() => {
         return;
       }
 
+      // Create a group to contain all VR-related objects
+      this._vrGroup = new THREE.Group();
+      scene.add(this._vrGroup);
+
       // Create controller visualizations
       for (let i = 0; i < 2; i++) {
-        this._setupController(i, renderer, scene);
+        this._setupController(i, renderer, this._vrGroup);
       }
 
       // Listen for VR session events
@@ -43,7 +49,7 @@ export const webxr_component = (() => {
       });
     }
 
-    _setupController(index, renderer, scene) {
+    _setupController(index, renderer, parentGroup) {
       // Get the controller
       const controller = renderer.xr.getController(index);
       
@@ -53,7 +59,7 @@ export const webxr_component = (() => {
       controller.addEventListener('connected', (event) => this._onControllerConnected(event, index));
       controller.addEventListener('disconnected', (event) => this._onControllerDisconnected(event, index));
       
-      scene.add(controller);
+      parentGroup.add(controller);
 
       // Create a simple controller visualization (line pointing forward)
       const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -66,7 +72,7 @@ export const webxr_component = (() => {
 
       // Get the controller grip
       const controllerGrip = renderer.xr.getControllerGrip(index);
-      scene.add(controllerGrip);
+      parentGroup.add(controllerGrip);
 
       // Store controller data
       this._vrControllers[index] = {
@@ -136,6 +142,9 @@ export const webxr_component = (() => {
     _onVRSessionStart() {
       console.log('VR Session started');
       
+      // Initialize VR camera position relative to player
+      this._updateVRCameraPosition();
+      
       // Hide desktop UI elements that don't make sense in VR
       const desktopUI = document.getElementById('game-ui');
       if (desktopUI) {
@@ -176,6 +185,9 @@ export const webxr_component = (() => {
     Update(timeElapsed) {
       if (!this._isVRActive) return;
 
+      // Update VR camera position relative to player
+      this._updateVRCameraPosition();
+
       // Update controller states and handle continuous input
       for (let i = 0; i < this._vrControllers.length; i++) {
         const controllerData = this._vrControllers[i];
@@ -183,6 +195,36 @@ export const webxr_component = (() => {
           this._updateControllerInput(i, controllerData);
         }
       }
+    }
+
+    _updateVRCameraPosition() {
+      // Get the player entity
+      const player = this.FindEntity('player');
+      if (!player || !player._position) {
+        return;
+      }
+
+      // Calculate VR space position relative to player
+      const playerPosition = player._position.clone();
+      
+      // Get terrain height at player position
+      const terrain = this.FindEntity('terrain');
+      if (terrain) {
+        const terrainComponent = terrain.GetComponent('TerrainChunkManager');
+        if (terrainComponent) {
+          const terrainHeight = terrainComponent.GetHeight(playerPosition)[0];
+          playerPosition.y = terrainHeight + 1.7; // Add typical standing height (1.7m)
+        }
+      }
+
+      // Update VR group position to follow the player
+      // This moves the entire VR coordinate space to the player's location
+      if (this._vrGroup) {
+        this._vrGroup.position.copy(playerPosition);
+      }
+
+      // Store base position for reference
+      this._vrBasePosition.copy(playerPosition);
     }
 
     _updateControllerInput(controllerIndex, controllerData) {
