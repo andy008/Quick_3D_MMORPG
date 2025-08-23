@@ -80,7 +80,8 @@ export const webxr_component = (() => {
         grip: controllerGrip,
         line: line,
         isSelecting: false,
-        gamepad: null
+        gamepad: null,
+        thumbstickPressed: false
       };
     }
 
@@ -244,6 +245,29 @@ export const webxr_component = (() => {
             y: yAxis
           });
         }
+      }
+
+      // Handle thumbstick button press (typically button 3 on most VR controllers)
+      if (gamepad.buttons && gamepad.buttons[3]) {
+        const thumbstickPressed = gamepad.buttons[3].pressed;
+        
+        // Track previous state to detect press/release events
+        if (!controllerData.thumbstickPressed && thumbstickPressed) {
+          // Button just pressed
+          this.Broadcast({
+            topic: 'vr.controller.select',
+            controllerIndex: controllerIndex,
+            selecting: true
+          });
+        } else if (controllerData.thumbstickPressed && !thumbstickPressed) {
+          // Button just released
+          this.Broadcast({
+            topic: 'vr.controller.select',
+            controllerIndex: controllerIndex,
+            selecting: false
+          });
+        }
+        controllerData.thumbstickPressed = thumbstickPressed;
       }
 
       // Handle trigger input

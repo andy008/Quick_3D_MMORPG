@@ -46,15 +46,14 @@ export const player_input = (() => {
       document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
       document.addEventListener('mouseup', (e) => this._onMouseUp(e), false);
 
-      // VR Controller support
-      this._vrControllers = [];
-      this._initVRControllers();
+      // VR Controller support - handled by WebXR component
     }
 
     InitComponent() {
       // Register for VR events from WebXR component
       this._RegisterHandler('vr.controller.select', (m) => this._OnVRSelect(m));
       this._RegisterHandler('vr.controller.thumbstick', (m) => this._OnVRThumbstick(m));
+      this._RegisterHandler('vr.controller.trigger', (m) => this._OnVRTrigger(m));
     }
   
     _onMouseUp(event) {
@@ -163,63 +162,22 @@ export const player_input = (() => {
       return;
     }
 
-    _initVRControllers() {
-      // This will be called to setup VR controllers when needed
-      if (!this._params.renderer || !this._params.renderer.xr) {
-        return;
-      }
-
-      const renderer = this._params.renderer;
-      const scene = this._params.scene;
-
-      // Create controller models
-      for (let i = 0; i < 2; i++) {
-        const controller = renderer.xr.getController(i);
-        controller.addEventListener('selectstart', (event) => this._onVRSelectStart(event, i));
-        controller.addEventListener('selectend', (event) => this._onVRSelectEnd(event, i));
-        controller.addEventListener('connected', (event) => this._onVRControllerConnected(event, i));
-        scene.add(controller);
-
-        const controllerGrip = renderer.xr.getControllerGrip(i);
-        scene.add(controllerGrip);
-
-        this._vrControllers.push({
-          controller: controller,
-          grip: controllerGrip,
-          isSelecting: false
-        });
-      }
-    }
-
-    _onVRSelectStart(event, controllerIndex) {
-      if (this._vrControllers[controllerIndex]) {
-        this._vrControllers[controllerIndex].isSelecting = true;
-        this._handleVRInteraction(event, controllerIndex);
-      }
-    }
-
-    _onVRSelectEnd(event, controllerIndex) {
-      if (this._vrControllers[controllerIndex]) {
-        this._vrControllers[controllerIndex].isSelecting = false;
-      }
-    }
-
-    _onVRControllerConnected(event, controllerIndex) {
-      console.log(`VR Controller ${controllerIndex} connected:`, event.data);
-    }
-
-    _onVRControllerConnected(event, controllerIndex) {
-      console.log(`VR Controller ${controllerIndex} connected:`, event.data);
-    }
-
     _OnVRSelect(msg) {
-      if (msg.selecting) {
-        this._handleVRInteraction(null, msg.controllerIndex);
+      // Left controller (index 0) select = thumbstick press = SHIFT (run)
+      if (msg.controllerIndex === 0) {
+        this._keys.shift = msg.selecting;
+      } else if (msg.controllerIndex === 1) {
+        // Right controller select for interaction (keeping existing behavior)
+        if (msg.selecting) {
+          this._handleVRInteraction(null, msg.controllerIndex);
+        }
       }
     }
 
     _OnVRThumbstick(msg) {
-      // Map VR thumbstick to movement keys
+      // Map VR thumbstick to movement keys (left controller only - index 0)
+      if (msg.controllerIndex !== 0) return;
+      
       const threshold = 0.3;
       
       // Forward/backward movement (Y axis)
@@ -229,6 +187,13 @@ export const player_input = (() => {
       // Left/right movement (X axis)  
       this._keys.left = msg.x < -threshold;
       this._keys.right = msg.x > threshold;
+    }
+
+    _OnVRTrigger(msg) {
+      // Map right controller trigger to SPACE action (right controller - index 1)
+      if (msg.controllerIndex === 1) {
+        this._keys.space = msg.value > 0.5; // Trigger threshold for SPACE action
+      }
     }
 
     _handleVRInteraction(event, controllerIndex) {
@@ -248,42 +213,6 @@ export const player_input = (() => {
       const raycaster = new THREE.Raycaster();
       raycaster.ray.origin.copy(controllerPosition);
       raycaster.ray.direction.copy(controllerDirection);
-
-      // Check for pickable objects (similar to mouse interaction)
-      const pickables = this.Manager.Filter((e) => {
-        const p = e.GetComponent('PickableComponent');
-        if (!p) {
-          return false;
-        }
-        return e._mesh;
-      });
-
-      // Hide quest UI
-      document.getElementById('quest-ui').style.visibility = 'hidden';
-
-      for (let p of pickables) {
-        const box = new THREE.Box3().setFromObject(p._mesh);
-        if (raycaster.ray.intersectsBox(box)) {
-          p.Broadcast({
-              topic: 'input.picked'
-          });
-          break;
-        }
-      }
-    }
-
-    // Legacy VR interaction method (kept for compatibility)
-    _handleVRInteractionLegacy(event, controllerIndex) {
-      const controller = this._vrControllers[controllerIndex]?.controller;
-      if (!controller) return;
-
-      // Create raycaster from controller position and direction
-      const tempMatrix = new THREE.Matrix4();
-      tempMatrix.identity().extractRotation(controller.matrixWorld);
-      
-      const raycaster = new THREE.Raycaster();
-      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
       // Check for pickable objects (similar to mouse interaction)
       const pickables = this.Manager.Filter((e) => {
