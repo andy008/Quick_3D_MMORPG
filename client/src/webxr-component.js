@@ -80,9 +80,14 @@ export const webxr_component = (() => {
         if (camera) {
           this._origCameraParent = camera.parent || this._params.scene;
           this._head.add(camera);
+          // Set camera at character eye height
           this._head.position.y = this._headHeight;
-          // adjust head to be slightly in front of character
-          this._head.position.z = -0.1;          
+          // Position slightly in front of face, looking forward
+          this._head.position.z = 0.2;
+          
+          // Initial camera orientation - look forward
+          camera.position.set(0, 0, 0);
+          camera.rotation.set(0, 0, 0);
         }
 
         this._isVRActive = true;
@@ -233,17 +238,18 @@ export const webxr_component = (() => {
         this._rig.position.copy(p);
       }
 
-      // keep head offset you set earlier
-      if (this._head) this._head.position.y = this._headHeight;
+      // Position head at character eye level (slightly higher than default)
+      if (this._head) {
+        this._head.position.y = this._headHeight;
+        // Position head slightly in front of character, looking forward
+        this._head.position.z = 0.2;
+      }
 
-      // <<< NEW: align rig yaw to player yaw
+      // Align rig yaw to player yaw for proper camera tracking
       const playerYawQ = this._getPlayerYawQuat();
       if (playerYawQ) {
-        // snap:
-        this._rig.quaternion.copy(playerYawQ);
-
-        // or smooth, if you prefer (0..1):
-        // this._rig.quaternion.slerp(playerYawQ, 0.25);
+        // Use smooth interpolation for better VR experience
+        this._rig.quaternion.slerp(playerYawQ, 0.1);
       }
     }
 
@@ -252,14 +258,9 @@ export const webxr_component = (() => {
       const player = this.FindEntity('player');
       if (!player) return null;
 
-      // Try to read rotation from a mesh if present
-      if (player._mesh && player._mesh.getWorldQuaternion) {
-        player._mesh.getWorldQuaternion(this._tmpQ);
-      } else if (player._quaternion) {
-        this._tmpQ.copy(player._quaternion);
-      } else if (player._rotation) {
-        this._tmpE.set(0, player._rotation.y || 0, 0, 'YXZ');
-        this._tmpQ.setFromEuler(this._tmpE);
+      // Player entity stores rotation in _rotation property (Quaternion)
+      if (player._rotation) {
+        this._tmpQ.copy(player._rotation);
       } else {
         return null;
       }
