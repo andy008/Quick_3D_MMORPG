@@ -187,6 +187,7 @@ export const player_entity = (() => {
       }
 
       const input = this.GetComponent('BasicCharacterControllerInput');
+     
       this.stateMachine_.Update(timeInSeconds, input);
 
       if (this._mixer) {
