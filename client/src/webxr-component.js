@@ -7,31 +7,44 @@ export const webxr_component = (() => {
     constructor(params) {
       super();
       this._params = params;
-      this._scale = 8;
-      this._isVRActive = false;
 
-      // XR rig pieces
-      this._rig = null;          // world-space anchor you move around
-      this._head = null;         // head offset node (parent of camera)
+      // ---- CONFIG ----
+      // How many WORLD UNITS equal 1 real meter? (Scale XR space to your world.)
+      this._unitsPerMeter   = (params && params.unitsPerMeter != null) ? params.unitsPerMeter : 1.0;
+      // Additional eye height in METERS to add on top of the platform’s local-floor eye height.
+      this._eyeOffsetMeters = (params && params.eyeOffsetMeters != null) ? params.eyeOffsetMeters : 0.0;
+      // If your device reports stick-forward as +Y, flip it. Default false matches your player-input.
+      this._invertStickY    = (params && params.invertStickY != null) ? params.invertStickY : false;
+
+      this._isVRActive = false; 
+
+      // Rig hierarchy: RIG -> HEAD -> (camera)
+      this._rig  = null;
+      this._head = null;
       this._origCameraParent = null;
 
       // Height handling
-      this._xrHasFloor = false;  // true when using 'local-floor'
-      this._headHeight = 1.7;    // fallback eye height if no floor
+      this._xrHasFloor  = false; // true if 'local-floor' succeeded
+      this._headHeight  = 1.7;   // fallback eye height if no floor (meters)
 
       // Controllers
-      this._vrControllers = [];  // per-index state
-      this._handToIndex = {};    // { left: idx, right: idx }
+      this._vrControllers = [];
+      this._handToIndex = {};
 
-      this._tmpQ = null;
-      this._tmpE = null;     
+      // Temps
+      this._tmpQ = new THREE.Quaternion();
+      this._tmpE = new THREE.Euler(0,0,0,'YXZ');
+
+      // Terrain follow
+      this._yLerp       = 0.18; // smoothing for small undulations
+      this._snapMeters  = 0.9;  // snap on big steps
+      this._terrainYOffset = 0; // if your player origin isn't at feet
     }
 
     InitComponent() {
       this._setupWebXR();
     }
 
-    // ---- tiny event emitter: window CustomEvents + optional internal bus ----
     _emit(topic, detail) {
       try { this.Broadcast?.({ topic, ...detail }); } catch (_) {}
       window.dispatchEvent(new CustomEvent(topic, { detail }));
@@ -44,64 +57,82 @@ export const webxr_component = (() => {
         return;
       }
 
-      // Prefer a floor-aligned reference space (if unsupported, we’ll fall back)
+      // Use platform floor when available
       if (renderer.xr.setReferenceSpaceType) {
         renderer.xr.setReferenceSpaceType('local-floor');
       }
 
-      // Build the VR rig (proxy):  rig -> head -> camera
+      // Build rig
       this._rig = new THREE.Group();
       this._rig.name = 'XR_Rig';
       scene.add(this._rig);
 
-      this._tmpQ = new THREE.Quaternion();
-      this._tmpE = new THREE.Euler(0,0,0,'YXZ');       
+      // Scale the entire XR space to match your world units-per-meter
+      this._rig.scale.setScalar(this._unitsPerMeter);
 
       this._head = new THREE.Group();
       this._head.name = 'XR_Head';
       this._rig.add(this._head);
 
-      // Controllers live under the rig so they move with the player
+      // Controllers under rig
       for (let i = 0; i < 2; i++) this._setupController(i, renderer, this._rig);
 
-      // Session lifecycle
+      // --- Session lifecycle ---
       renderer.xr.addEventListener('sessionstart', async () => {
-        // detect if floor ref space is actually available
+        // Detect floor ref space
         this._xrHasFloor = false;
         const session = renderer.xr.getSession?.();
         if (session && session.requestReferenceSpace) {
           try {
             await session.requestReferenceSpace('local-floor');
             this._xrHasFloor = true;
-          } catch (_) { this._xrHasFloor = false; }
+          } catch (_) {
+            this._xrHasFloor = false;
+          }
         }
 
-        // Parent the camera into the rig under a head node
+        // Parent your SCENE camera under head (we avoid reparenting the internal XR camera)
         if (camera) {
-          this._origCameraParent = camera.parent || this._params.scene;
+          this._origCameraParent = camera.parent || scene;
           this._head.add(camera);
-          // Set camera at character eye height
-          this._head.position.y = (this._headHeight * this._scale);
-          // Position slightly in front of face, looking forward
-          this._head.position.x = 0.2;
-          console.log('Head Y position', this._head.position.y);
 
-          // Initial camera orientation - look forward
+          // local-floor: runtime supplies eye height; we can add an *extra bias* in METERS.
+          // Convert meters to local units: because the rig is scaled by unitsPerMeter,
+          // setting head.y in METERS is correct (it will be multiplied by the rig scale).
+          const headMeters = this._xrHasFloor ? this._eyeOffsetMeters : this._headHeight + this._eyeOffsetMeters;
+          this._head.position.y = headMeters;
+
+          // small forward nudge (forward is +Z)
+          this._head.position.z = 0.4;
+
+          // XR camera near far
+          this._applyXRCameraClips(0.01, 2000);
+
+          // point head in the right direction
+          this._head.rotation.set(0, Math.PI, 0);
+
+          // Zero local pose; XR will drive it
           camera.position.set(0, 0, 0);
           camera.rotation.set(0, 0, 0);
+          camera.updateMatrixWorld(true);
         }
+
+        // Make sure we start at terrain height so we don't spawn below ground
+        this._snapRigToTerrainOnce();
 
         this._isVRActive = true;
         this._onVRSessionStart();
       });
 
       renderer.xr.addEventListener('sessionend', () => {
-        // put camera back where it was
+        // Restore camera parent
         const { camera, scene } = this._params;
         if (camera) {
           (this._origCameraParent || scene).add(camera);
-          this._head.position.set(0,0,0);
         }
+        // Reset head local offset (for non-VR usage)
+        this._head.position.set(0,0,0);
+
         this._isVRActive = false;
         this._onVRSessionEnd();
       });
@@ -115,7 +146,6 @@ export const webxr_component = (() => {
       controller.addEventListener('disconnected',(e)=>this._onControllerDisconnected(e, index));
       parentGroup.add(controller);
 
-      // Visible forward ray
       const geom = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)
       ]);
@@ -203,10 +233,10 @@ export const webxr_component = (() => {
     Update() {
       if (!this._isVRActive) return;
 
-      // Keep rig snapped to player/terrain
+      // keep rig aligned to player & terrain
       this._updateVRCameraPosition();
 
-      // Poll gamepads each frame (robust across runtimes)
+      // poll gamepads
       const session = this._params.renderer.xr.getSession?.();
       for (let i = 0; i < this._vrControllers.length; i++) {
         const c = this._vrControllers[i]; if (!c) continue;
@@ -223,55 +253,81 @@ export const webxr_component = (() => {
       }
     }
 
-    // === THE "PROXY" RIG UPDATE ===
+    _snapRigToTerrainOnce() {
+      const player = this.FindEntity('player');
+      if (!player || !player._position || !this._rig) return;
+      const p = player._position.clone();
+      const terrain = this.FindEntity('terrain')?.GetComponent('TerrainChunkManager');
+      let y = this._rig.position.y;
+      if (terrain) {
+        const h = terrain.GetHeight(p)[0];
+        y = h + this._terrainYOffset;
+      } else {
+        y = p.y;
+      }
+      this._rig.position.set(p.x, y, p.z);
+    }
+
+    // Move RIG to follow terrain; head.y is meters (bias) that gets scaled by unitsPerMeter
     _updateVRCameraPosition() {
       const player = this.FindEntity('player');
       if (!player || !player._position || !this._rig) return;
 
       const p = player._position.clone();
 
-      // snap rig to ground at player XZ
+      // target ground height at player XZ
+      let targetY = this._rig.position.y;
       const terrain = this.FindEntity('terrain')?.GetComponent('TerrainChunkManager');
       if (terrain) {
-        const h = terrain.GetHeight(p)[0];
-        this._rig.position.set(p.x, h, p.z);
+        const h = terrain.GetHeight(p)[0]; // meters in your game's scale
+        targetY = h + this._terrainYOffset;
       } else {
-        this._rig.position.copy(p);
+        targetY = p.y;
       }
 
-      // Position head at character eye level (slightly higher than default)
-      if (this._head) {
-        this._head.position.y = this._headHeight;
-        // Position head slightly in front of character, looking forward
-        this._head.position.z = 0.2;
+      // smooth vs snap
+      const dy = targetY - this._rig.position.y;
+      if (Math.abs(dy) > this._snapMeters) {
+        this._rig.position.y = targetY;
+      } else {
+        this._rig.position.y += dy * this._yLerp;
       }
 
-      // Align rig yaw to player yaw for proper camera tracking
+      // follow player XZ
+      this._rig.position.x = p.x;
+      this._rig.position.z = p.z;
+
+      // head Y bias: 0 if floor is active, else fallback head height; both plus extra offset
+      const headMeters = (this._xrHasFloor ? 0 : this._headHeight) + this._eyeOffsetMeters;
+      this._head.position.y = headMeters;   // <-- this value is in meters; rig scaling converts to world units
+      this._head.position.z = 0.2;
+
+      // align rig yaw to player's yaw
       const playerYawQ = this._getPlayerYawQuat();
       if (playerYawQ) {
-        // Use smooth interpolation for better VR experience
         this._rig.quaternion.slerp(playerYawQ, 0.1);
       }
     }
-
 
     _getPlayerYawQuat() {
       const player = this.FindEntity('player');
       if (!player) return null;
 
-      // Player entity stores rotation in _rotation property (Quaternion)
-      if (player._rotation) {
+      if (player._rotation && player._rotation.isQuaternion) {
         this._tmpQ.copy(player._rotation);
+      } else if (player._quaternion && player._quaternion.isQuaternion) {
+        this._tmpQ.copy(player._quaternion);
+      } else if (player._mesh?.getWorldQuaternion) {
+        player._mesh.getWorldQuaternion(this._tmpQ);
       } else {
         return null;
       }
 
-      // isolate yaw only
       this._tmpE.setFromQuaternion(this._tmpQ, 'YXZ');
       this._tmpE.x = 0; this._tmpE.z = 0;
       this._tmpQ.setFromEuler(this._tmpE);
       return this._tmpQ;
-    }      
+    }
 
     _deadzone(v, dz = 0.15) { return Math.abs(v) < dz ? 0 : v; }
     _pickStickAxes(axes = []) {
@@ -286,14 +342,14 @@ export const webxr_component = (() => {
 
       if (gp.axes && gp.axes.length) {
         let { x, y } = this._pickStickAxes(gp.axes);
-        y = -y;
+        if (this._invertStickY) y = -y; // configurable
         this._emit('vr.controller.thumbstick', {
           controllerIndex: index, handedness: hand,
           x: this._deadzone(x), y: this._deadzone(y)
         });
       }
 
-      // Thumbstick press (common mappings 3 or 9)
+      // Thumbstick press (common: buttons[3] or [9])
       const btnStick = gp.buttons && (gp.buttons[3] || gp.buttons[9]);
       if (btnStick) {
         const pressed = !!btnStick.pressed;
@@ -306,7 +362,7 @@ export const webxr_component = (() => {
         }
       }
 
-      // Trigger analog (button 0 most devices)
+      // Trigger analog (button 0)
       const trig = gp.buttons && gp.buttons[0];
       if (trig) {
         const val = trig.value || (trig.pressed ? 1 : 0);
@@ -316,9 +372,9 @@ export const webxr_component = (() => {
           });
         }
       }
-    } 
+    }
 
-    // Helpers for picking/interactions
+    // Helpers
     GetController(index) { return this._vrControllers[index]?.controller; }
     IsVRActive() { return this._isVRActive; }
 
@@ -333,6 +389,33 @@ export const webxr_component = (() => {
       const m = new THREE.Matrix4().extractRotation(c.matrixWorld);
       return dir.applyMatrix4(m).normalize();
     }
+
+    // Convert meters → world units using your unitsPerMeter, then push to XR cameras
+    _applyXRCameraClips(nearMeters, farMeters) {
+      const { renderer, camera } = this._params;
+      if (!renderer || !renderer.xr) return;
+
+      const near = nearMeters * (this._unitsPerMeter || 1.0);
+      const far  = farMeters  * (this._unitsPerMeter || 1.0);
+
+      const xrCam = renderer.xr.getCamera(camera);
+      if (!xrCam) return;
+
+      // The wrapper camera
+      xrCam.near = near;
+      xrCam.far  = far;
+      xrCam.updateProjectionMatrix();
+
+      // Per-eye cameras
+      if (xrCam.cameras && xrCam.cameras.length) {
+        for (const c of xrCam.cameras) {
+          c.near = near;
+          c.far  = far;
+          c.updateProjectionMatrix();
+        }
+      }
+    }
+
   }
 
   return { WebXRController };

@@ -122,6 +122,9 @@ class CrappyMMOAttempt {
         renderer: this.threejs_,
         scene: this.scene_,
         camera: this.camera_,
+        unitsPerMeter: 5.3,       // scale up WebXR height to match character scaling
+        eyeOffsetMeters: 0,       // extra bias if needed
+        invertStickY: false       // fix your forward/back        
     }));
     this.entityManager_.Add(webxr, 'webxr');
 
@@ -153,17 +156,62 @@ class CrappyMMOAttempt {
   }
 
   RAF_() {
-    // For VR mode, use setAnimationLoop instead of requestAnimationFrame
+    // dynamic XR scale state
+    this._xrScale = 1.3;          // start a bit higher for clarity
+    this._avgMs   = 0;            // EMA of frame time
+    this._targetMs = 1000 / 72;   // will update from XR session.frameRate if available
+    this._xrHz = 72;
+
+    if (this.threejs_.xr.setFramebufferScaleFactor) {
+      this.threejs_.xr.setFramebufferScaleFactor(this._xrScale);
+    }
+    if (this.threejs_.xr.setFoveation) {
+      this.threejs_.xr.setFoveation(0); // optional: max quality in center
+    }
+
     this.threejs_.setAnimationLoop((t) => {
-      if (this.previousRAF_ === null) {
-        this.previousRAF_ = t;
+      if (this.previousRAF_ === null) this.previousRAF_ = t;
+      const dt = t - this.previousRAF_;
+      this.previousRAF_ = t;
+
+      // --- dynamic scaling only while in XR ---
+      const xr = this.threejs_.xr;
+      if (xr && xr.isPresenting) {
+        // pick the headset’s refresh rate if exposed
+        const session = xr.getSession && xr.getSession();
+        const hz = (session && session.frameRate) ? session.frameRate : this._xrHz;
+        if (hz !== this._xrHz) {
+          this._xrHz = hz;
+          this._targetMs = 1000 / hz;
+        }
+
+        // exponential moving average of frame time
+        this._avgMs = this._avgMs * 0.9 + dt * 0.1;
+
+        // hysteresis band to avoid oscillation
+        const upThresh   = this._targetMs * 0.92; // faster than target → scale up (sharper)
+        const downThresh = this._targetMs * 1.08; // slower than target → scale down
+
+        // clamp range & small step changes
+        const minScale = 1.0;
+        const maxScale = 1.4;
+        const step = 0.05;
+
+        if (this._avgMs > downThresh && this._xrScale > minScale) {
+          this._xrScale = Math.max(minScale, +(this._xrScale - step).toFixed(2));
+          xr.setFramebufferScaleFactor && xr.setFramebufferScaleFactor(this._xrScale);
+        } else if (this._avgMs < upThresh && this._xrScale < maxScale) {
+          this._xrScale = Math.min(maxScale, +(this._xrScale + step).toFixed(2));
+          xr.setFramebufferScaleFactor && xr.setFramebufferScaleFactor(this._xrScale);
+        }
       }
 
+      // your original order
       this.threejs_.render(this.scene_, this.camera_);
-      this.Step_(t - this.previousRAF_);
-      this.previousRAF_ = t;
+      this.Step_(dt);
     });
   }
+
 
   Step_(timeElapsed) {
     const timeElapsedS = Math.min(1.0 / 30.0, timeElapsed * 0.001);

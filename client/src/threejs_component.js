@@ -102,6 +102,13 @@ export const threejs_component = (() => {
 
       // Enable WebXR support
       this.threejs_.xr.enabled = true;
+      if (this.threejs_.xr.setFramebufferScaleFactor) {
+        this.threejs_.xr.setFramebufferScaleFactor(1.3);
+      }
+      // If available in your build/runtime, lower foveation to reduce periphery shimmer.
+      if (this.threejs_.xr.setFoveation) {
+        this.threejs_.xr.setFoveation(0); // 0 = full res, higher = more foveation
+      }      
   
       document.getElementById('container').appendChild(this.threejs_.domElement);
 
@@ -131,7 +138,7 @@ export const threejs_component = (() => {
       }
         
       const aspect = window.innerWidth / window.innerHeight;
-      const near = 1.0;
+      const near = 0.05;
 
       this.camera_ = new THREE.PerspectiveCamera(fov, aspect, near, far);
       this.camera_.position.set(25, 10, 25);
