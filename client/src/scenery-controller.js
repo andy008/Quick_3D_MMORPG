@@ -336,9 +336,13 @@ export const scenery_controller = (() => {
         }
       }
 
+      // fauna density
+      let faunaDensity = 1.6 // smaller = more
+
+
       // lots of small stuff
-      for (let x = -3; x <= 3; x +=0.3) {
-        for (let y = -3; y <= 3; y +=0.4) {
+      for (let x = -3; x <= 3; x +=faunaDensity) {
+        for (let y = -3; y <= 3; y +=faunaDensity) {
           _P.set(x, 0.0, y);
           _P.add(center);
           _P.multiplyScalar(50.0);
@@ -387,11 +391,13 @@ export const scenery_controller = (() => {
 
 
     DestroyVegation_(){
+      // destroy distance
+      let destroyDistance = 50;
       // stuff that is a long way from us can be not removed but HIDDEN
       for (let i = 0; i < this.vegetation_.length; ++i) {
         const veg = this.vegetation_[i];     
         const dist = veg.Position.distanceTo(this.FindEntity('player').Position);
-        if (dist > 150.0) {
+        if (dist > destroyDistance) {
           const e = this.FindEntity(veg.Name)
           //this.Manager.Remove(e);
           e.visible = false;
